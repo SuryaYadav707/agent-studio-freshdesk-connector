@@ -1,0 +1,146 @@
+{
+  "freshdesk": {
+    "current_version": "v1",
+    "versions": {
+      "v1": {
+        "auth_type": "form",
+        "dynamic_loading": false,
+        "sync_type": "none",
+        "token_rotation": false,
+        "environment_specific_fields": {
+          "local": {
+            "domain": "${FRESHDESK_DOMAIN}",
+            "api_key": "${FRESHDESK_API_KEY}"
+          },
+          "dev": {
+            "domain": "${FRESHDESK_DOMAIN}",
+            "api_key": "${FRESHDESK_API_KEY}"
+          },
+          "prod": {
+            "domain": "${FRESHDESK_DOMAIN}",
+            "api_key": "${FRESHDESK_API_KEY}"
+          }
+        },
+        "form_fields": ["domain", "api_key"],
+        "api_base": "https://{domain}.freshdesk.com/api/v2",
+        "health_endpoint": "/agents/me",
+        "documentation_url": "https://developers.freshdesk.com/api/",
+        "rate_limits": {
+          "per_client": null,
+          "per_account": 50,
+          "per_token": null,
+          "window_seconds": 60,
+          "concurrency": 4,
+          "cooldown_period": 60,
+          "initial_sleep_period": 1,
+          "linear_backoff_rate": 2,
+          "rate_limit_codes": [429],
+          "backoff_strategy": "exponential",
+          "max_retries": 3,
+          "honor_retry_after": true
+        }
+      }
+    }
+  },
+  "zoho_inventory": {
+    "current_version": "v1",
+    "versions": {
+      "v1": {
+        "auth_type": "oauth2",
+        "dynamic_loading": false,
+        "sync_type": "none",
+        "token_rotation": false,
+        "pkce": false,
+        "environment_specific_fields": {
+          "local": {
+            "client_id": "${ZOHO_CLIENT_ID}",
+            "client_secret": "${ZOHO_CLIENT_SECRET}",
+            "dc": "${ZOHO_DC:in}",
+            "organization_id": "${ZOHO_ORGANIZATION_ID:}"
+          },
+          "dev": {
+            "client_id": "${ZOHO_CLIENT_ID}",
+            "client_secret": "${ZOHO_CLIENT_SECRET}",
+            "dc": "${ZOHO_DC:in}",
+            "organization_id": "${ZOHO_ORGANIZATION_ID:}"
+          },
+          "prod": {
+            "client_id": "${ZOHO_CLIENT_ID}",
+            "client_secret": "${ZOHO_CLIENT_SECRET}",
+            "dc": "${ZOHO_DC:in}",
+            "organization_id": "${ZOHO_ORGANIZATION_ID:}"
+          }
+        },
+        "redirect_endpoint": "/oauth2callback/zoho_inventory",
+        "scope": "ZohoInventory.settings.READ,ZohoInventory.items.READ,ZohoInventory.salesorders.READ",
+        "scope_separator": ",",
+        "authorization_url": "https://accounts.zoho.{dc}/oauth/v2/auth?response_type=code&access_type=offline&prompt=consent",
+        "authorization_url_fields": ["client_id", "redirect_uri", "scope", "state"],
+        "token_endpoint": "https://accounts.zoho.{dc}/oauth/v2/token",
+        "token_endpoint_fields": ["client_id", "client_secret", "code", "redirect_uri", "grant_type"],
+        "refresh_token_endpoint_fields": ["client_id", "client_secret", "refresh_token", "grant_type"],
+        "revoke_endpoint": "https://accounts.zoho.{dc}/oauth/v2/token/revoke",
+        "token_endpoint_headers": {
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "token_type": "Zoho-oauthtoken",
+        "api_base": "https://www.zohoapis.{dc}/inventory/v1",
+        "health_endpoint": "/organizations",
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/",
+        "action_scope_map": {
+          "verify_connection": ["ZohoInventory.settings.READ"],
+          "list_organizations": ["ZohoInventory.settings.READ"],
+          "list_items": ["ZohoInventory.items.READ"],
+          "get_item": ["ZohoInventory.items.READ"],
+          "search_items": ["ZohoInventory.items.READ"],
+          "list_sales_orders": ["ZohoInventory.salesorders.READ"],
+          "get_sales_order": ["ZohoInventory.salesorders.READ"],
+          "seed": [
+            "ZohoInventory.settings.READ",
+            "ZohoInventory.items.CREATE",
+            "ZohoInventory.items.UPDATE",
+            "ZohoInventory.items.DELETE",
+            "ZohoInventory.contacts.CREATE",
+            "ZohoInventory.contacts.READ",
+            "ZohoInventory.salesorders.CREATE",
+            "ZohoInventory.salesorders.DELETE"
+          ]
+        },
+        "sensitive_scopes": {
+          "ZohoInventory.items.CREATE": {
+            "name": "Create items",
+            "description": "Allows creating inventory items. Used only by the seed script.",
+            "restricted": true,
+            "warning": "Write access. Never granted to the runtime agent."
+          },
+          "ZohoInventory.contacts.CREATE": {
+            "name": "Create contacts",
+            "description": "Allows creating customers. Used only by the seed script.",
+            "restricted": true,
+            "warning": "Write access. Never granted to the runtime agent."
+          },
+          "ZohoInventory.salesorders.CREATE": {
+            "name": "Create sales orders",
+            "description": "Allows creating sales orders. Used only by the seed script.",
+            "restricted": true,
+            "warning": "Write access. Never granted to the runtime agent."
+          }
+        },
+        "rate_limits": {
+          "per_client": null,
+          "per_account": 100,
+          "per_token": null,
+          "window_seconds": 60,
+          "concurrency": 5,
+          "cooldown_period": 60,
+          "initial_sleep_period": 1,
+          "linear_backoff_rate": 2,
+          "rate_limit_codes": [429],
+          "backoff_strategy": "exponential",
+          "max_retries": 3,
+          "honor_retry_after": true
+        }
+      }
+    }
+  }
+}

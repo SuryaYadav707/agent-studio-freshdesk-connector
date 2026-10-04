@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+tokens/*.json
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+dist/
+build/
+tokens/*.lock
+.ruff_cache/
+review.md
+# kept locally, not part of the submission
+tests/
