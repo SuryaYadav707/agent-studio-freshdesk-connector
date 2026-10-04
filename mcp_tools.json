@@ -1,0 +1,840 @@
+{
+  "server": {
+    "name": "agent-studio-connector",
+    "instructions": "Read-only connector for merchant tools. Freshdesk tools read support tickets (API key auth). Zoho Inventory tools read items, stock and sales orders (OAuth 2.0). Every result is JSON with `ok`; on failure `error.type` is one of auth_error, config_error, not_found, rate_limited, upstream_error, validation_error. When rate_limited, wait `error.retry_after` seconds. Paginate with `page` while `has_more` is true.",
+    "transport": [
+      "stdio",
+      "streamable-http"
+    ]
+  },
+  "tools": [
+    {
+      "name": "freshdesk_verify_connection",
+      "title": "Freshdesk: Verify Freshdesk connection",
+      "description": "Check that the stored Freshdesk API key still works. Returns the connected agent, helpdesk domain and current rate-limit headroom. Use before other Freshdesk tools when unsure whether the connection is healthy.",
+      "inputSchema": {
+        "properties": {},
+        "title": "freshdesk_verify_connectionArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://developers.freshdesk.com/api/#authentication",
+        "integration": "freshdesk",
+        "task": "verify_connection"
+      }
+    },
+    {
+      "name": "freshdesk_list_tickets",
+      "title": "Freshdesk: List Freshdesk tickets",
+      "description": "List tickets from the connected Freshdesk helpdesk, newest first by default. Supports Freshdesk's predefined views (new_and_my_open, watching, spam, deleted), filtering by requester id / email / company id, an updated_since cutoff and pagination (max 100 per page, up to page 300). Results carry status and priority labels. To filter by status, priority, tag, agent or date range use freshdesk_search_tickets.",
+      "inputSchema": {
+        "properties": {
+          "filter": {
+            "anyOf": [
+              {
+                "enum": [
+                  "new_and_my_open",
+                  "watching",
+                  "spam",
+                  "deleted"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Predefined Freshdesk view. Omit for all non-deleted, non-spam tickets.",
+            "title": "Filter"
+          },
+          "requester_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only tickets raised by this requester id.",
+            "title": "Requester Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only tickets raised by this requester email.",
+            "title": "Email"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only tickets from this company id.",
+            "title": "Company Id"
+          },
+          "updated_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only tickets updated after this ISO-8601 timestamp.",
+            "title": "Updated Since"
+          },
+          "order_by": {
+            "default": "created_at",
+            "enum": [
+              "created_at",
+              "due_by",
+              "updated_at",
+              "status"
+            ],
+            "title": "Order By",
+            "type": "string"
+          },
+          "order_type": {
+            "default": "desc",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Order Type",
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "default": 30,
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "include_requester": {
+            "default": true,
+            "description": "Embed requester name/email on each ticket.",
+            "title": "Include Requester",
+            "type": "boolean"
+          },
+          "include_stats": {
+            "default": false,
+            "description": "Embed resolved_at / first_responded_at timestamps.",
+            "title": "Include Stats",
+            "type": "boolean"
+          },
+          "include_description": {
+            "default": false,
+            "description": "Include the ticket body text (truncated).",
+            "title": "Include Description",
+            "type": "boolean"
+          }
+        },
+        "title": "freshdesk_list_ticketsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://developers.freshdesk.com/api/#list_all_tickets",
+        "integration": "freshdesk",
+        "task": "list_tickets"
+      }
+    },
+    {
+      "name": "freshdesk_get_ticket",
+      "title": "Freshdesk: Get Freshdesk ticket",
+      "description": "Fetch one Freshdesk ticket by its numeric id, including the description text, requester details and SLA timestamps. Optionally include the conversation thread (Freshdesk returns at most the 10 most recent replies/notes here, bodies truncated). Use after listing or searching to read a specific ticket.",
+      "inputSchema": {
+        "properties": {
+          "ticket_id": {
+            "description": "Freshdesk ticket id (the number shown in the ticket URL).",
+            "title": "Ticket Id",
+            "type": "integer"
+          },
+          "include_conversations": {
+            "default": false,
+            "description": "Also return replies and private notes.",
+            "title": "Include Conversations",
+            "type": "boolean"
+          },
+          "include_requester": {
+            "default": true,
+            "title": "Include Requester",
+            "type": "boolean"
+          },
+          "include_stats": {
+            "default": true,
+            "description": "Include resolved_at / first_responded_at etc.",
+            "title": "Include Stats",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "title": "freshdesk_get_ticketArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://developers.freshdesk.com/api/#view_a_ticket",
+        "integration": "freshdesk",
+        "task": "get_ticket"
+      }
+    },
+    {
+      "name": "freshdesk_search_tickets",
+      "title": "Freshdesk: Search Freshdesk tickets",
+      "description": "Filter Freshdesk tickets by status, priority, tag, type, assigned agent/group and created/updated date ranges. All conditions are combined with AND; multiple values for one field are OR-ed. Returns 30 tickets per page with a total count. Use this instead of freshdesk_list_tickets whenever the question mentions status, priority, tags or agents.",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "open",
+                    "pending",
+                    "resolved",
+                    "closed"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One or more of open, pending, resolved, closed.",
+            "title": "Status"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "urgent"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One or more of low, medium, high, urgent.",
+            "title": "Priority"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tickets carrying any of these tags.",
+            "title": "Tags"
+          },
+          "ticket_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Freshdesk ticket type, e.g. 'Question', 'Incident'.",
+            "title": "Ticket Type"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Assigned agent id.",
+            "title": "Agent Id"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Assigned group id.",
+            "title": "Group Id"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tickets created on/after this date (YYYY-MM-DD).",
+            "title": "Created After"
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tickets created on/before this date (YYYY-MM-DD).",
+            "title": "Created Before"
+          },
+          "updated_after": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tickets updated on/after this date (YYYY-MM-DD).",
+            "title": "Updated After"
+          },
+          "page": {
+            "default": 1,
+            "description": "Freshdesk allows up to 10 pages of 30 results.",
+            "title": "Page",
+            "type": "integer"
+          }
+        },
+        "title": "freshdesk_search_ticketsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://developers.freshdesk.com/api/#filter_tickets",
+        "integration": "freshdesk",
+        "task": "search_tickets"
+      }
+    },
+    {
+      "name": "zoho_inventory_verify_connection",
+      "title": "Zoho Inventory: Verify Zoho Inventory connection",
+      "description": "Check that the Zoho Inventory OAuth connection is valid (refreshing the access token if needed) and report the organization the agent is bound to, the data center and the granted scopes. Use before other Zoho tools when unsure whether the connection is healthy, or when another Zoho tool returned auth_error or config_error.",
+      "inputSchema": {
+        "properties": {},
+        "title": "zoho_inventory_verify_connectionArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/oauth/",
+        "integration": "zoho_inventory",
+        "task": "verify_connection"
+      }
+    },
+    {
+      "name": "zoho_inventory_list_organizations",
+      "title": "Zoho Inventory: List Zoho Inventory organizations",
+      "description": "List the Zoho Inventory organizations the connected Zoho account can access, with their ids, currency and plan. The connector works against one organization at a time; this shows which exist. Does not require an organization to be selected yet.",
+      "inputSchema": {
+        "properties": {},
+        "title": "zoho_inventory_list_organizationsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/organizations/",
+        "integration": "zoho_inventory",
+        "task": "list_organizations"
+      }
+    },
+    {
+      "name": "zoho_inventory_list_items",
+      "title": "Zoho Inventory: List Zoho Inventory items",
+      "description": "List products/items in the connected Zoho Inventory organization with stock on hand, available stock, reorder level and an is_low_stock flag. Filter by status or item type (e.g. Status.Lowstock for items at/below reorder level), sort by name, sku, rate or stock_on_hand, and paginate. To look up items by name or SKU text use zoho_inventory_search_items.",
+      "inputSchema": {
+        "properties": {
+          "filter_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Status.All",
+                  "Status.Active",
+                  "Status.Inactive",
+                  "Status.Lowstock",
+                  "ItemType.All",
+                  "ItemType.Sales",
+                  "ItemType.Purchases",
+                  "ItemType.SalesAndPurchases",
+                  "ItemType.Inventory",
+                  "ItemType.NonInventory",
+                  "ItemType.Service"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Zoho predefined filter, e.g. Status.Lowstock or ItemType.Inventory.",
+            "title": "Filter By"
+          },
+          "status": {
+            "default": "active",
+            "description": "Default active only; 'all' includes inactive items.",
+            "enum": [
+              "active",
+              "inactive",
+              "all"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "sort_column": {
+            "default": "name",
+            "enum": [
+              "name",
+              "sku",
+              "rate",
+              "purchase_rate",
+              "created_time",
+              "last_modified_time",
+              "reorder_level",
+              "stock_on_hand"
+            ],
+            "title": "Sort Column",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": "A",
+            "description": "A = ascending, D = descending.",
+            "enum": [
+              "A",
+              "D"
+            ],
+            "title": "Sort Order",
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "default": 50,
+            "title": "Per Page",
+            "type": "integer"
+          }
+        },
+        "title": "zoho_inventory_list_itemsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/items/#list-all-the-items",
+        "integration": "zoho_inventory",
+        "task": "list_items"
+      }
+    },
+    {
+      "name": "zoho_inventory_get_item",
+      "title": "Zoho Inventory: Get Zoho Inventory item",
+      "description": "Fetch one Zoho Inventory item by item_id with full detail: description, pricing, stock on hand and available stock per location/warehouse, reorder level. Use after listing or searching to answer questions about a specific product.",
+      "inputSchema": {
+        "properties": {
+          "item_id": {
+            "description": "Zoho item_id (numeric string, e.g. '4815000000044220').",
+            "title": "Item Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "title": "zoho_inventory_get_itemArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/items/#retrieve-an-item",
+        "integration": "zoho_inventory",
+        "task": "get_item"
+      }
+    },
+    {
+      "name": "zoho_inventory_search_items",
+      "title": "Zoho Inventory: Search Zoho Inventory items",
+      "description": "Find items by free text across name/SKU (search_text), or by a substring of the name or SKU. Optionally restrict to active items or to items at/below their reorder level (low_stock_only). Returns the same fields as zoho_inventory_list_items. Use this when the question names a product, SKU or keyword.",
+      "inputSchema": {
+        "properties": {
+          "search_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Free text matched against name, SKU and other searchable fields.",
+            "title": "Search Text"
+          },
+          "name_contains": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Substring of the item name.",
+            "title": "Name Contains"
+          },
+          "sku_contains": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Substring of the SKU.",
+            "title": "Sku Contains"
+          },
+          "active_only": {
+            "default": true,
+            "description": "Exclude inactive items.",
+            "title": "Active Only",
+            "type": "boolean"
+          },
+          "low_stock_only": {
+            "default": false,
+            "description": "Only items whose stock is at or below the reorder level.",
+            "title": "Low Stock Only",
+            "type": "boolean"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "default": 50,
+            "title": "Per Page",
+            "type": "integer"
+          }
+        },
+        "title": "zoho_inventory_search_itemsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/items/#list-all-the-items",
+        "integration": "zoho_inventory",
+        "task": "search_items"
+      }
+    },
+    {
+      "name": "zoho_inventory_list_sales_orders",
+      "title": "Zoho Inventory: List Zoho Inventory sales orders",
+      "description": "List sales orders with status (draft/open/invoiced/void/closed), customer, total, shipment and invoiced/paid/shipped flags. Filter by status, customer name or id, order number, free text or a date range (YYYY-MM-DD), sort and paginate. Use zoho_inventory_get_sales_order for line items of one order.",
+      "inputSchema": {
+        "properties": {
+          "filter_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Status.All",
+                  "Status.Draft",
+                  "Status.Open",
+                  "Status.Invoiced",
+                  "Status.PartiallyInvoiced",
+                  "Status.Void",
+                  "Status.Closed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Predefined status filter, e.g. Status.Open.",
+            "title": "Filter By"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact Zoho status value, e.g. 'open', 'draft', 'invoiced', 'void'.",
+            "title": "Status"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Customer Name"
+          },
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Zoho contact id of the customer.",
+            "title": "Customer Id"
+          },
+          "salesorder_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact order number, e.g. 'SO-00012'.",
+            "title": "Salesorder Number"
+          },
+          "search_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Free text across order number, reference and customer.",
+            "title": "Search Text"
+          },
+          "date_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Orders dated on/after this day (YYYY-MM-DD).",
+            "title": "Date Start"
+          },
+          "date_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Orders dated on/before this day (YYYY-MM-DD).",
+            "title": "Date End"
+          },
+          "sort_column": {
+            "default": "date",
+            "enum": [
+              "customer_name",
+              "salesorder_number",
+              "shipment_date",
+              "total",
+              "date",
+              "created_time",
+              "last_modified_time"
+            ],
+            "title": "Sort Column",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": "D",
+            "enum": [
+              "A",
+              "D"
+            ],
+            "title": "Sort Order",
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "default": 50,
+            "title": "Per Page",
+            "type": "integer"
+          }
+        },
+        "title": "zoho_inventory_list_sales_ordersArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/salesorders/#list-all-sales-orders",
+        "integration": "zoho_inventory",
+        "task": "list_sales_orders"
+      }
+    },
+    {
+      "name": "zoho_inventory_get_sales_order",
+      "title": "Zoho Inventory: Get Zoho Inventory sales order",
+      "description": "Fetch one sales order by salesorder_id with line items (item, SKU, quantity ordered / invoiced / shipped, rate), totals, addresses and notes. Use after listing orders to answer questions about a specific order.",
+      "inputSchema": {
+        "properties": {
+          "salesorder_id": {
+            "description": "Zoho salesorder_id (numeric string). Not the SO-00012 number; list orders to map it.",
+            "title": "Salesorder Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "salesorder_id"
+        ],
+        "title": "zoho_inventory_get_sales_orderArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "meta": {
+        "documentation_url": "https://www.zoho.com/inventory/api/v1/salesorders/#retrieve-a-sales-order",
+        "integration": "zoho_inventory",
+        "task": "get_sales_order"
+      }
+    }
+  ]
+}
