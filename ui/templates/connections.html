@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set active = 'connections' %}
+{% block title %}Connections · Connector demo{% endblock %}
+{% block content %}
+<h1>Connections</h1>
+<p class="muted">Two auth patterns behind one interface: OAuth 2.0 consent (Zoho Inventory) and API-key form (Freshdesk).</p>
+
+<div class="cards">
+{% for c in cards %}
+  <section class="card" id="card-{{ c.integration }}">
+    <div class="card-head">
+      <h2>{{ c.display_name }}</h2>
+      <span class="pill {{ 'on' if c.connected else 'off' }}">{{ 'connected' if c.connected else 'not connected' }}</span>
+    </div>
+    <div class="meta">
+      <div><span class="k">auth</span> {{ 'OAuth 2.0 (authorization code + refresh)' if c.auth == 'oauth2' else 'API key (HTTP Basic)' }}</div>
+      {% if c.connected %}
+        <div><span class="k">account</span> {{ c.account_name }}</div>
+        {% if c.scopes %}<div><span class="k">scopes</span> <code>{{ c.scopes | join(', ') }}</code></div>{% endif %}
+        {% for name, value in c.additional_params.items() %}<div><span class="k">{{ name }}</span> <code>{{ value }}</code></div>{% endfor %}
+      {% endif %}
+    </div>
+
+    {% if c.connected %}
+      <div class="row">
+        <button class="btn" data-health="{{ c.integration }}">Check health</button>
+        <form method="post" action="/disconnect/{{ c.integration }}" class="inline"><button class="btn danger">Disconnect</button></form>
+      </div>
+      <pre class="out" id="health-{{ c.integration }}" hidden></pre>
+    {% elif c.auth == 'oauth2' %}
+      <form method="get" action="/authorize/{{ c.integration }}" class="stack">
+        <label>Data center
+          <select name="dc">
+            <option value="">(from .env)</option>
+            <option value="in">India (.in)</option>
+            <option value="com">US (.com)</option>
+            <option value="eu">Europe (.eu)</option>
+            <option value="com.au">Australia (.com.au)</option>
+          </select>
+        </label>
+        <button class="btn primary">Connect with Zoho</button>
+        <p class="muted small">Redirects to Zoho's consent screen with read-only scopes. The redirect URI must be registered as
+          <code>{{ settings.ui_base_url }}/oauth2callback/{{ c.integration }}</code>.</p>
+      </form>
+    {% else %}
+      <form method="post" action="/connect/{{ c.integration }}" class="stack">
+        {% for f in c.form.fields %}
+          <label>{{ f.label }}
+            <input name="{{ f.field }}" type="{{ 'password' if f.type == 'secret' else 'text' }}" required placeholder="{{ f.helper_text }}" autocomplete="off">
+          </label>
+        {% endfor %}
+        <button class="btn primary">Validate and connect</button>
+        <p class="muted small">The key is checked with one live call before it is stored.</p>
+      </form>
+    {% endif %}
+  </section>
+{% endfor %}
+</div>
+{% endblock %}

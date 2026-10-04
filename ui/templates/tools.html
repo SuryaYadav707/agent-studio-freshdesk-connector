@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% set active = 'tools' %}
+{% block title %}Tools · Connector demo{% endblock %}
+{% block content %}
+<h1>Tools playground</h1>
+<p class="muted">Every tool below is exactly what the MCP server exposes. The form is generated from the tool's <code>inputSchema</code>.</p>
+
+<div class="split">
+  <aside>
+    <ul class="toollist" id="toollist">
+      {% for t in tools %}
+        <li><button class="linkish" data-tool="{{ t.name }}">{{ t.name }}</button></li>
+      {% endfor %}
+    </ul>
+  </aside>
+  <section>
+    <div id="tool-empty" class="muted">Pick a tool.</div>
+    <div id="tool-panel" hidden>
+      <h2 id="tool-name"></h2>
+      <p id="tool-desc" class="muted"></p>
+      <p class="small"><a id="tool-docs" href="#" target="_blank" rel="noopener">Vendor API docs</a></p>
+      <form id="tool-form" class="stack"></form>
+      <div class="row">
+        <button class="btn primary" id="tool-run">Run</button>
+        <span id="tool-timing" class="muted small"></span>
+      </div>
+      <h3>Result</h3>
+      <pre class="out" id="tool-out">—</pre>
+      <details><summary>inputSchema</summary><pre class="out" id="tool-schema"></pre></details>
+    </div>
+  </section>
+</div>
+<script id="tools-json" type="application/json">{{ tools | tojson }}</script>
+{% endblock %}

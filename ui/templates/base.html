@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Connector demo{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">Agent Studio connector <span class="muted">demo</span></div>
+  <nav>
+    <a href="/" class="{{ 'active' if active == 'connections' else '' }}">Connections</a>
+    <a href="/tools" class="{{ 'active' if active == 'tools' else '' }}">Tools playground</a>
+    <a href="/chat" class="{{ 'active' if active == 'chat' else '' }}">Agent chat</a>
+  </nav>
+</header>
+<main>
+  {% for m in flash %}
+    <div class="flash {{ m.level }}">{{ m.text }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="muted">Read-only connector. Credentials stay in <code>{{ settings.credentials_dir }}</code> on this machine.</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

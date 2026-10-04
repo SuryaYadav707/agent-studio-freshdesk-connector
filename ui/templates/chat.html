@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set active = 'chat' %}
+{% block title %}Agent chat · Connector demo{% endblock %}
+{% block content %}
+{% set connected = connections | selectattr('connected') | list %}
+<div class="chat-head">
+  <div>
+    <h1>Agent chat</h1>
+    <p class="muted dev-only">Claude <code>{{ model }}</code> with {{ tool_count }} connector tools, streamed over a Messages API tool loop. Every tool call is shown as it happens.</p>
+    <p class="muted merchant-only">Ask about your stock, sales orders and support tickets. The assistant only reads data and shows what it checked.</p>
+  </div>
+  <div class="row">
+    <label class="toggle" title="Developer view shows model, tool inputs/outputs, latency, rate-limit headers, tokens and cost. Merchant view shows a plain activity summary.">
+      <input type="checkbox" id="dev-toggle" checked> Developer view
+    </label>
+    <button class="btn" id="chat-new">New chat</button>
+  </div>
+</div>
+
+<div class="scope">
+  <span class="k">scope</span>
+  {% if connected %}
+    {% for c in connected %}
+      <span class="chip">
+        <b>{{ c.display_name }}</b> · read-only ·
+        <span class="dev-only">{% if c.auth == 'oauth2' %}{{ c.scopes | join(', ') }}{% else %}API key (agent's own permissions){% endif %}</span>
+        <span class="merchant-only">{% if c.integration == 'zoho_inventory' %}items, sales orders, organization settings{% else %}support tickets{% endif %}</span>
+      </span>
+    {% endfor %}
+  {% else %}
+    <span class="chip warn">nothing connected · <a href="/">connect an integration</a></span>
+  {% endif %}
+  <span class="chip">no write actions · no outbound messages</span>
+</div>
+
+{% if not chat_enabled %}
+  <div class="flash error">Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> and restart to enable chat.</div>
+{% endif %}
+
+<div id="chat-log" class="chatlog" aria-live="polite"></div>
+
+<form id="chat-form" class="row chat-form">
+  <input id="chat-q" type="text" placeholder="Ask about stock, orders or tickets…" {{ 'disabled' if not chat_enabled else '' }} autocomplete="off">
+  <button class="btn primary" id="chat-send" {{ 'disabled' if not chat_enabled else '' }}>Ask</button>
+  <button class="btn danger" id="chat-stop" type="button" hidden>Stop</button>
+</form>
+
+<div class="suggest">
+  <span class="muted small">Try:</span>
+  <button class="linkish" data-q="Which items are at or below their reorder level? Show SKU, stock on hand and reorder level.">low stock</button>
+  <button class="linkish" data-q="List the open or draft sales orders from the last 30 days and tell me which customer has the highest total.">open orders by customer</button>
+  <button class="linkish" data-q="For the most recent draft sales order, check every line item's available stock and tell me if it can be fulfilled.">can we fulfil the latest order?</button>
+  <button class="linkish" data-q="Show open urgent or high priority Freshdesk tickets and summarise what customers are complaining about.">urgent tickets</button>
+  <button class="linkish" data-q="Mark item BOT-1L as inactive.">a write request (should refuse)</button>
+</div>
+<script src="/static/marked.min.js"></script>
+<script src="/static/purify.min.js"></script>
+{% endblock %}
